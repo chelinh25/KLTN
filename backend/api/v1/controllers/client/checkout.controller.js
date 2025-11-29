@@ -6,7 +6,7 @@ const Hotel = require("../../models/hotel.model");
 const Room = require("../../models/room.model");
 const tourHelper = require("../../helper/tours");
 const generate = require("../../helper/generate");
-const vnpay = require('../../../../config/vnpay');
+const vnpayHelper = require("../../helper/vnpayHelper");
 const sendMailHelper = require("../../helper/sendMail");
 const moment = require("moment");
 
@@ -323,22 +323,33 @@ module.exports.createPayment = async (req, res) => {
             });
         }
 
-        const now = moment();
-        const expire = now.clone().add(15, "minutes");
+        // Ensure totalPrice is a valid number
+        const totalPriceInVND = Math.round(Number(order.totalPrice));
+        const vnpAmount = totalPriceInVND * 100; // VNPay yêu cầu số tiền tính bằng đơn vị nhỏ nhất (VND x 100)
 
-        const paymentUrl = vnpay.buildPaymentUrl({
-            vnp_Amount: order.totalPrice,
+        console.log('=== CREATE PAYMENT DEBUG ===');
+        console.log('Order ID:', order._id);
+        console.log('Order Code:', order.orderCode);
+        console.log('Total Price (VND):', totalPriceInVND);
+        console.log('VNP Amount (smallest unit):', vnpAmount);
+        console.log('Request IP:', req.ip);
+
+        const paymentUrl = vnpayHelper.buildPaymentUrl({
+            vnp_Amount: vnpAmount,
             vnp_IpAddr: req.ip || "127.0.0.1",
-            vnp_TxnRef: order.orderCode + Date.now(),
+            vnp_TxnRef: order.orderCode + "_" + Date.now(),
             vnp_OrderInfo: 'Thanh toan don hang ' + order._id,
             vnp_OrderType: "other",
             vnp_ReturnUrl: `${process.env.FE_URL}/payment-callback`,
             vnp_Locale: "vn",
-            vnp_CreateDate: now.format("YYYYMMDDHHmmss"),
-            vnp_ExpireDate: expire.format("YYYYMMDDHHmmss"),
         });
 
-        res.json({ paymentUrl });
+        console.log('Payment URL generated:', paymentUrl);
+
+        res.json({ 
+            code: 200,
+            paymentUrl 
+        });
     } catch (error) {
         console.error("Lỗi tạo thanh toán VNPay:", error);
         res.json({
@@ -352,7 +363,7 @@ module.exports.createPayment = async (req, res) => {
 module.exports.verifyPayment = async (req, res) => {
     let verify;
     try {
-        verify = vnpay.verifyReturnUrl(req.query);
+        verify = vnpayHelper.verifyReturnUrl(req.query);
         if (!verify.isVerified) {
             return res.json({
                 code: 400,
@@ -366,6 +377,7 @@ module.exports.verifyPayment = async (req, res) => {
             });
         }
     } catch (error) {
+        console.error('Verify payment error:', error);
         return res.json({
             code: 500,
             message: "Lỗi xử lý thanh toán!"
@@ -434,7 +446,7 @@ module.exports.verifyPayment = async (req, res) => {
 module.exports.paymentCallback = async (req, res) => {
     let verify;
     try {
-        verify = vnpay.verifyReturnUrl(req.query);
+        verify = vnpayHelper.verifyReturnUrl(req.query);
         if (!verify.isVerified) {
             return res.redirect(`${process.env.FE_URL}/payment-result?status=invalid`);
         }
@@ -442,6 +454,7 @@ module.exports.paymentCallback = async (req, res) => {
             return res.redirect(`${process.env.FE_URL}/payment-result?status=fail`);
         }
     } catch (error) {
+        console.error('Payment callback error:', error);
         return res.redirect(`${process.env.FE_URL}/payment-result?status=error`);
     }
 

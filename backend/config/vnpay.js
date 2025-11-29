@@ -1,4 +1,4 @@
-const { VNPay, ignoreLogger } = require("vnpay");
+const { VNPay } = require("vnpay");
 
 const vnpay = new VNPay({
     // Thông tin cấu hình bắt buộc
@@ -10,6 +10,5 @@ const vnpay = new VNPay({
     testMode: true,
     hashAlgorithm: 'SHA512',
     enableLog: true,
-    loggerFn: ignoreLogger,
 });
 module.exports = vnpay;
