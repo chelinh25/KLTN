@@ -11,8 +11,8 @@ let isProcessing = false;
 // Hàm delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Hàm gọi OpenRouter API (fallback)
-async function callOpenRouterAPI(messages, maxRetries = 2) {
+// Hàm gọi Mistral 7B API qua OpenRouter
+async function callMistralAPI(messages, maxRetries = 3) {
     let lastError = null;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -26,7 +26,7 @@ async function callOpenRouterAPI(messages, maxRetries = 2) {
             const response = await axios.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 {
-                    model: "mistralai/mistral-7b-instruct:free", // Model miễn phí từ OpenRouter
+                    model: "mistralai/mistral-7b-instruct:free",
                     messages: formattedMessages,
                     temperature: 0.7,
                     max_tokens: 1024,
@@ -42,6 +42,7 @@ async function callOpenRouterAPI(messages, maxRetries = 2) {
                 }
             );
             
+            console.log(`✓ Mistral API success on attempt ${attempt}`);
             return { 
                 success: true, 
                 data: { 
@@ -51,96 +52,22 @@ async function callOpenRouterAPI(messages, maxRetries = 2) {
                         } 
                     }] 
                 },
-                provider: "openrouter"
+                provider: "mistral"
             };
         } catch (error) {
             lastError = error;
-            console.error(`OpenRouter attempt ${attempt}/${maxRetries} failed:`, error.response?.status);
+            console.error(`Mistral attempt ${attempt}/${maxRetries} failed:`, error.response?.status);
             
             if (error.response?.status === 429 && attempt < maxRetries) {
-                await delay(2000);
+                const waitTime = Math.pow(2, attempt) * 1000;
+                console.log(`Rate limited. Waiting ${waitTime/1000}s...`);
+                await delay(waitTime);
                 continue;
             }
             break;
         }
     }
     
-    return { 
-        success: false, 
-        error: lastError,
-        status: lastError?.response?.status 
-    };
-}
-
-// Hàm gọi Google Gemini API với nhiều API key
-async function callGeminiAPI(messages, maxRetries = 2) {
-    // Danh sách API keys (thêm key dự phòng nếu có)
-    const apiKeys = [
-        process.env.GEMINI_API_KEY,
-        process.env.GEMINI_API_KEY_2, // Có thể thêm key thứ 2
-        process.env.GEMINI_API_KEY_3  // Có thể thêm key thứ 3
-    ].filter(Boolean); // Loại bỏ undefined
-    
-    let lastError = null;
-    
-    // Thử từng API key
-    for (const apiKey of apiKeys) {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                // Chuyển đổi messages sang format của Gemini
-                const contents = messages
-                    .filter(msg => msg.role !== "system")
-                    .map(msg => ({
-                        role: msg.role === "assistant" ? "model" : "user",
-                        parts: [{ text: msg.content }]
-                    }));
-                
-                // Lấy system instruction từ system message
-                const systemInstruction = messages.find(msg => msg.role === "system")?.content || "";
-                
-                const response = await axios.post(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-                    {
-                        contents: contents,
-                        systemInstruction: {
-                            parts: [{ text: systemInstruction }]
-                        },
-                        generationConfig: {
-                            temperature: 0.7,
-                            maxOutputTokens: 1024,
-                        }
-                    },
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        timeout: 30000
-                    }
-                );
-                
-                console.log(`✓ Gemini API success with key #${apiKeys.indexOf(apiKey) + 1}`);
-                return { success: true, data: response.data, provider: "gemini" };
-            } catch (error) {
-                lastError = error;
-                console.error(`Gemini key #${apiKeys.indexOf(apiKey) + 1} attempt ${attempt}/${maxRetries} failed:`, error.response?.status);
-                
-                // Nếu là lỗi 429 hoặc 503 và chưa hết retry
-                if ((error.response?.status === 429 || error.response?.status === 503) && attempt < maxRetries) {
-                    const waitTime = Math.pow(2, attempt) * 2000; // Tăng thời gian chờ
-                    console.log(`Rate limited. Waiting ${waitTime/1000}s...`);
-                    await delay(waitTime);
-                    continue;
-                }
-                
-                // Nếu không phải lỗi có thể retry, thử key tiếp theo
-                if (error.response?.status !== 429 && error.response?.status !== 503) {
-                    break;
-                }
-            }
-        }
-    }
-    
-    // Trả về lỗi
     return { 
         success: false, 
         error: lastError,
@@ -319,22 +246,21 @@ ${suggestedTours ? 'Tours hiện có:\n' + suggestedTours : 'Hiện chưa có to
         }
 
         let reply = "";
-        let usedProvider = "unknown";
+        let usedProvider = "mistral";
         
         // Thêm delay nhỏ giữa các request để tránh rate limit
         await delay(500);
         
-        console.log("🚀 Calling OpenRouter API with", messages.length, "messages");
+        console.log("🚀 Calling Mistral 7B API with", messages.length, "messages");
         
-        // Gọi OpenRouter API
-        let result = await callOpenRouterAPI(messages, 3);
+        // Gọi Mistral API
+        let result = await callMistralAPI(messages, 3);
         
         if (result.success) {
-            usedProvider = result.provider || "unknown";
-            console.log(`✅ AI Response received from ${usedProvider}`);
+            console.log(`✅ AI Response received from Mistral 7B`);
             reply = result.data.candidates?.[0]?.content?.parts?.[0]?.text || "Xin lỗi, tôi không thể trả lời câu hỏi này.";
         } else {
-            console.error("=== All AI APIs Failed ===");
+            console.error("=== Mistral API Failed ===");
             console.error("Status:", result.status);
             console.error("Error:", result.error?.response?.data);
             
