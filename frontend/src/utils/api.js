@@ -12,14 +12,14 @@ const api = Axios.create({
 // Interceptor để thêm token vào header
 api.interceptors.request.use((config) => {
   // Chuẩn hóa URL để tránh lặp lại baseURL
-  if (config.url.startsWith("/api/v1")) {
+  if (config.url?.startsWith("/api/v1")) {
     config.url = config.url.replace("/api/v1", "");
   }
 
   // Logging để debug
   console.log("API Request:", config.url, config.method);
 
-  const token = localStorage.getItem(config.url.includes("/admin") ? "adminToken" : "token");
+  const token = localStorage.getItem(config.url?.includes("/admin") ? "adminToken" : "token");
   const pathsWithoutToken = [
     "/users/login",
     "/users/register",
@@ -27,7 +27,7 @@ api.interceptors.request.use((config) => {
     "/admin/accounts/login",
   ];
 
-  if (token && !pathsWithoutToken.some((path) => config.url.includes(path))) {
+  if (token && !pathsWithoutToken.some((path) => config.url?.includes(path))) {
     config.headers["Authorization"] = `Bearer ${token}`;
     console.log("Token added to request:", token);
   } else {
@@ -51,7 +51,7 @@ api.interceptors.response.use(
 
     if (status === 401) {
       // Xử lý lỗi 401 (phiên hết hạn)
-      if (error.config.url.includes("/admin")) {
+      if (error.config.url?.includes("/admin")) {
         toast.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!");
         localStorage.removeItem("adminToken");
         localStorage.removeItem("adminInfo");
@@ -63,6 +63,13 @@ api.interceptors.response.use(
         localStorage.removeItem("cartId");
         window.location.href = "/login";
       }
+    } else if (status === 429) {
+      // Xử lý lỗi 429 (Too Many Requests)
+      const retryAfter = error.response?.headers?.["retry-after"];
+      const message = retryAfter 
+        ? `Quá nhiều yêu cầu! Vui lòng thử lại sau ${retryAfter} giây.`
+        : "Quá nhiều yêu cầu! Vui lòng thử lại sau.";
+      toast.error(message);
     } else if (status === 404) {
       // Xử lý lỗi 404 mà không hiển thị toast (để frontend tự xử lý nếu cần)
       console.log(`API 404: Tài nguyên không tồn tại - ${error.config.url}`);

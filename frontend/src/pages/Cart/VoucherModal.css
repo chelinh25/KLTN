@@ -1,0 +1,128 @@
+.voucher-modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.voucher-list {
+  padding: 0.5rem 0;
+}
+
+.voucher-card {
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.voucher-card:hover:not(.disabled) {
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.voucher-card.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f8f9fa;
+}
+
+.voucher-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.voucher-code-badge {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.voucher-code {
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 0.5rem 0.75rem;
+  letter-spacing: 1px;
+}
+
+.voucher-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.voucher-description {
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.voucher-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.info-item i {
+  font-size: 1rem;
+}
+
+.info-item.text-success {
+  color: #28a745 !important;
+  font-weight: 600;
+}
+
+.voucher-unavailable {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background-color: #fff3cd;
+  border-radius: 4px;
+  border-left: 3px solid #ffc107;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .voucher-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .voucher-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .voucher-code-badge {
+    width: 100%;
+  }
+  
+  .voucher-header button {
+    width: 100%;
+  }
+}
+
+/* Animation for loading */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.voucher-modal-body .spinner-border {
+  width: 3rem;
+  height: 3rem;
+}

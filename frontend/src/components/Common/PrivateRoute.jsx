@@ -20,7 +20,7 @@ const PrivateRoute = ({ children, roles = [] }) => {
   }
 
   // Kiểm tra vai trò (nếu có)
-  if (roles.length > 0 && !roles.includes(user.role)) {
+  if (roles.length > 0 && user.role && !roles.includes(user.role)) {
     toast.error("Bạn không có quyền truy cập trang này!");
     return <Navigate to="/" replace />;
   }

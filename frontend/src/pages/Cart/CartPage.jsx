@@ -42,6 +42,7 @@ const CartPage = () => {
           "/path/to/fallback-image.jpg",
         checkIn: room.checkIn,
         checkOut: room.checkOut,
+        relatedTour: hotel.relatedTour || null,
       }))
     ),
   ];
@@ -64,14 +65,26 @@ const CartPage = () => {
   };
 
   const handleRemoveItem = async (item) => {
+    // Hiển thị hộp thoại xác nhận
+    const isConfirmed = window.confirm(
+      `Bạn có chắc chắn muốn xóa "${item.title}" khỏi giỏ hàng không?`
+    );
+    
+    if (!isConfirmed) {
+      return; // Người dùng hủy bỏ, không thực hiện xóa
+    }
+
     try {
       await removeFromCart(
         item.type,
         item.type === "tour" ? item.tour_id : item.hotel_id,
         item.type === "room" ? item.room_id : undefined
       );
+      // Thông báo xóa thành công
+      toast.success("Đã xóa sản phẩm khỏi giỏ hàng!");
     } catch (error) {
       // Lỗi đã được xử lý trong removeFromCart
+      toast.error("Có lỗi xảy ra khi xóa sản phẩm!");
     }
   };
 
@@ -178,6 +191,11 @@ const CartPage = () => {
                               />
                               <div>
                                 <h5>{item.title}</h5>
+                                {item.relatedTour && (
+                                  <small className="text-muted d-block mt-1">
+                                    <i className="bi bi-geo-alt"></i> Tour liên quan: {item.relatedTour.title}
+                                  </small>
+                                )}
                               </div>
                             </div>
                           </td>

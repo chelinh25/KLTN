@@ -1,5 +1,6 @@
 const Hotel = require("../../models/hotel.model");
 const Room = require("../../models/room.model");
+const Tour = require("../../models/tour.model");
 const paginationHelper = require("../../helper/pagination");
 const { convertToSlug } = require("../../helper/convertToSlug");
 
@@ -515,6 +516,35 @@ module.exports.stock = async (req, res) => {
             res.json({
                 code: 500,
                 message: "Error:" + error
+            });
+        }
+    }
+};
+
+// [GET]/api/v1/admin/hotels/get-all-tours
+module.exports.getAllTours = async (req, res) => {
+    const permissions = req.roles.permissions;
+    if (!permissions.includes("hotel_view")) {
+        return res.json({
+            code: 400,
+            message: "Bạn không có quyền xem danh sách tour"
+        });
+    } else {
+        try {
+            const tours = await Tour.find({ 
+                deleted: false,
+                status: "active"
+            }).select('_id title code');
+            
+            res.json({
+                code: 200,
+                message: "Danh sách tour",
+                data: tours
+            });
+        } catch (error) {
+            res.json({
+                code: 500,
+                message: "Error: " + error.message
             });
         }
     }

@@ -42,3 +42,39 @@ module.exports.detailRoom = async (req, res) => {
         room: room
     });
 };
+
+// [GET]/api/v1/hotels/by-tour/:tourId
+module.exports.getHotelsByTour = async (req, res) => {
+    try {
+        const tourId = req.params.tourId;
+        const hotels = await Hotel.find({
+            tour_id: tourId,
+            status: 'active',
+            deleted: false
+        });
+        
+        // Lấy thông tin phòng cho mỗi khách sạn
+        const hotelsWithRooms = await Promise.all(
+            hotels.map(async (hotel) => {
+                const rooms = await Room.find({
+                    hotel_id: hotel._id
+                });
+                return {
+                    ...hotel.toObject(),
+                    rooms: rooms
+                };
+            })
+        );
+
+        res.json({
+            code: 200,
+            message: "Danh sách khách sạn theo tour",
+            data: hotelsWithRooms
+        });
+    } catch (error) {
+        res.json({
+            code: 500,
+            message: "Error: " + error.message
+        });
+    }
+};

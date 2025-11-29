@@ -64,10 +64,11 @@ module.exports.createPost = async (req, res) => {
             // Tạo đối tượng voucher mới
             const voucher = new Voucher({
                 title: req.body.title,
-                code: req.body.code,
+                code: req.body.code.trim().toUpperCase(),
                 description: req.body.description,
-                quantity: req.body.quantity,
-                discount: req.body.discount,
+                quantity: parseInt(req.body.quantity),
+                discount: parseFloat(req.body.discount),
+                minOrderAmount: req.body.minOrderAmount ? parseFloat(req.body.minOrderAmount) : 0,
                 startDate: startDate,
                 endDate: endDate,
             });
@@ -100,9 +101,22 @@ module.exports.edit = async (req, res) => {
     } else {
         try {
             const id = req.params.id;
+            const updateData = { ...req.body };
+            if (updateData.code) {
+                updateData.code = updateData.code.trim().toUpperCase();
+            }
+            if (updateData.minOrderAmount !== undefined) {
+                updateData.minOrderAmount = parseFloat(updateData.minOrderAmount) || 0;
+            }
+            if (updateData.quantity !== undefined) {
+                updateData.quantity = parseInt(updateData.quantity);
+            }
+            if (updateData.discount !== undefined) {
+                updateData.discount = parseFloat(updateData.discount);
+            }
             await Voucher.updateOne({
                 _id: id
-            }, req.body);
+            }, updateData);
 
             res.json({
                 code: 200,

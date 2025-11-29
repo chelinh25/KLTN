@@ -30,12 +30,14 @@ const TourDetails = () => {
   const [tour, setTour] = useState(null);
   const [category, setCategory] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedTimeDepart, setSelectedTimeDepart] = useState(null);
+  const [selectedTimeDepart, setSelectedTimeDepart] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [voucherCode, setVoucherCode] = useState("");
   const [voucher, setVoucher] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false); // Trạng thái cho modal xác nhận
   const [isConfirmed, setIsConfirmed] = useState(false); // Trạng thái checkbox
+  const [hotels, setHotels] = useState([]); // Danh sách khách sạn liên quan
+  const [loadingHotels, setLoadingHotels] = useState(false);
 
   useEffect(() => {
     if (!tourId || tourId === "undefined") {
@@ -63,9 +65,10 @@ const TourDetails = () => {
       }));
       setTour(tourData);
 
-      if (tourData.timeStarts && tourData.timeStarts.length > 0) {
-        setSelectedTimeDepart(tourData.timeStarts[0].timeDepart);
-      }
+      // Không tự động chọn ngày, để user tự chọn
+      // if (tourData.timeStarts && tourData.timeStarts.length > 0) {
+      //   setSelectedTimeDepart(tourData.timeStarts[0].timeDepart);
+      // }
 
       if (tourData.category_id) {
         const categoryResponse = await api.get("/categories");
@@ -74,12 +77,29 @@ const TourDetails = () => {
         );
         setCategory(foundCategory);
       }
+
+      // Lấy danh sách khách sạn liên quan
+      fetchHotelsByTour(tourData._id);
     } catch (error) {
       console.error("Lỗi khi lấy chi tiết tour:", error);
       const errorMessage = error.response?.data?.message || "Không thể tải chi tiết tour!";
       toast.error(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHotelsByTour = async (tourId) => {
+    setLoadingHotels(true);
+    try {
+      const response = await api.get(`/hotels/by-tour/${tourId}`);
+      if (response.data.code === 200) {
+        setHotels(response.data.data);
+      }
+    } catch (error) {
+      console.error("Lỗi khi lấy khách sạn:", error);
+    } finally {
+      setLoadingHotels(false);
     }
   };
 
@@ -206,6 +226,9 @@ const TourDetails = () => {
                         <Nav.Link eventKey="2">Lịch trình</Nav.Link>
                       </Nav.Item>
                       <Nav.Item>
+                        <Nav.Link eventKey="3">Khách sạn</Nav.Link>
+                      </Nav.Item>
+                      <Nav.Item>
                         <Nav.Link eventKey="4">Vị trí</Nav.Link>
                       </Nav.Item>
                     </Nav>
@@ -252,11 +275,14 @@ const TourDetails = () => {
                                 className="d-inline-block w-auto tour-info-select"
                               >
                                 {tour.timeStarts && tour.timeStarts.length > 0 ? (
-                                  tour.timeStarts.map((time, index) => (
-                                    <option key={index} value={time.timeDepart}>
-                                      {new Date(time.timeDepart).toLocaleDateString("vi-VN")} (Còn {time.stock} chỗ)
-                                    </option>
-                                  ))
+                                  <>
+                                    <option value="" disabled>-- Chọn thời gian khởi hành --</option>
+                                    {tour.timeStarts.map((time, index) => (
+                                      <option key={index} value={time.timeDepart}>
+                                        {new Date(time.timeDepart).toLocaleDateString("vi-VN")} (Còn {time.stock} chỗ)
+                                      </option>
+                                    ))}
+                                  </>
                                 ) : (
                                   <option value="">Chưa có ngày khởi hành</option>
                                 )}
@@ -297,11 +323,86 @@ const TourDetails = () => {
                       </div>
                     </Tab.Pane>
                     <Tab.Pane eventKey="3">
+                      <div className="tour_details-section hotels-section">
+                        <h1 className="section-title">Khách sạn phù hợp với tour</h1>
+                        {loadingHotels ? (
+                          <p>Đang tải danh sách khách sạn...</p>
+                        ) : hotels.length > 0 ? (
+                          <Row className="mt-4">
+                            {hotels.map((hotel) => (
+                              <Col md={6} key={hotel._id} className="mb-4">
+                                <Card className="h-100 shadow-sm">
+                                  {hotel.images && hotel.images.length > 0 && (
+                                    <Card.Img 
+                                      variant="top" 
+                                      src={hotel.images[0]} 
+                                      style={{ height: '200px', objectFit: 'cover' }}
+                                      onError={(e) => {
+                                        e.target.src = "https://via.placeholder.com/400x200?text=No+Image";
+                                      }}
+                                    />
+                                  )}
+                                  <Card.Body>
+                                    <Card.Title className="fw-bold">{hotel.name}</Card.Title>
+                                    <Card.Text>
+                                      <small className="text-muted">
+                                        <i className="bi bi-geo-alt-fill"></i> {hotel.location?.city} - {hotel.location?.address}
+                                      </small>
+                                    </Card.Text>
+                                    {hotel.description && (
+                                      <Card.Text className="text-truncate-3">
+                                        {hotel.description}
+                                      </Card.Text>
+                                    )}
+                                    {hotel.rooms && hotel.rooms.length > 0 && (
+                                      <div className="mt-3">
+                                        <h6 className="fw-bold">Phòng có sẵn:</h6>
+                                        <ListGroup variant="flush">
+                                          {hotel.rooms.slice(0, 3).map((room) => (
+                                            <ListGroup.Item key={room._id} className="px-0">
+                                              <div className="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                  <strong>{room.name}</strong>
+                                                  <br />
+                                                  <small className="text-muted">Còn {room.availableRooms} phòng</small>
+                                                </div>
+                                                <span className="text-primary fw-bold">
+                                                  {Number(room.price).toLocaleString()} VNĐ/đêm
+                                                </span>
+                                              </div>
+                                            </ListGroup.Item>
+                                          ))}
+                                        </ListGroup>
+                                        {hotel.rooms.length > 3 && (
+                                          <small className="text-muted">Và {hotel.rooms.length - 3} phòng khác...</small>
+                                        )}
+                                      </div>
+                                    )}
+                                    <Button 
+                                      variant="primary" 
+                                      className="w-100 mt-3"
+                                      onClick={() => navigate(`/hotel-details/${hotel._id}?tourSlug=${tour.slug}&tourTitle=${encodeURIComponent(tour.title)}`)}
+                                    >
+                                      Xem chi tiết & Đặt phòng
+                                    </Button>
+                                  </Card.Body>
+                                </Card>
+                              </Col>
+                            ))}
+                          </Row>
+                        ) : (
+                          <div className="text-center py-4">
+                            <p className="text-muted">Hiện tại chưa có khách sạn liên quan đến tour này.</p>
+                          </div>
+                        )}
+                      </div>
+                    </Tab.Pane>
+                    <Tab.Pane eventKey="4">
                       <div className="tour_details-section location-section">
                         <h1 className="section-title">Vị trí</h1>
-                        {tour.location ? (
+                        {tour.location?.latitude && tour.location?.longitude ? (
                           <iframe
-                            src={tour.location}
+                            src={`https://maps.google.com/maps?q=${tour.location.latitude},${tour.location.longitude}&hl=vi&z=15&output=embed`}
                             width="100%"
                             height="400px"
                             allowFullScreen=""
@@ -309,7 +410,7 @@ const TourDetails = () => {
                             referrerPolicy="no-referrer-when-downgrade"
                           />
                         ) : (
-                          <p>Chưa có thông tin vị trí</p>
+                          <p>Chưa có thông tin vị trí chính xác. Điểm tập trung: {tour.gathering || "Chưa có thông tin"}</p>
                         )}
                       </div>
                     </Tab.Pane>

@@ -35,7 +35,7 @@ const CustomDropdown = ({ label, options, onSelect, placeholder }) => {
             {options
               .filter(
                 (option) =>
-                  !value || option.toLowerCase().includes(value.toLowerCase())
+                  !value || option?.toLowerCase().includes(value.toLowerCase())
               )
               .map((option, index) => (
                 <li key={index}>

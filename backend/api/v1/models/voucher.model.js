@@ -6,6 +6,10 @@ const VoucherSchema = new mongoose.Schema({
     description: String,
     quantity: Number,
     discount: Number,
+    minOrderAmount: {
+        type: Number,
+        default: 0
+    },
     startDate: Date,
     endDate: Date,
     deleted: {

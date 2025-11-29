@@ -381,7 +381,7 @@ const RightsGroupControl = () => {
 
     const isAllPermissionsSelected = () => {
         return AVAILABLE_PERMISSIONS.every((permission) =>
-            newRightsGroup.permissions.includes(permission)
+            newRightsGroup.permissions?.includes(permission)
         );
     };
 

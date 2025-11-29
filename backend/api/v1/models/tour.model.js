@@ -24,7 +24,16 @@ const TourSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    featured: {
+        type: Boolean,
+        default: false
+    },
     gathering: String,
+    location: {
+        latitude: Number,
+        longitude: Number,
+        address: String
+    },
     status: {
         type: String,
         default: "active"

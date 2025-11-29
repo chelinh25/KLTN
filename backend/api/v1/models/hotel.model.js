@@ -9,7 +9,13 @@ const HotelSchema = new mongoose.Schema({
     location: {
         city: String,
         country: String,
-        address: String
+        address: String,
+        latitude: Number,
+        longitude: Number
+    },
+    tour_id: {
+        type: String,
+        default: ""
     },
     sold: {
         type: Number,

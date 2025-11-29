@@ -58,9 +58,14 @@ module.exports.resultHotel = async (req, res) => {
             const stringSlugRegex = new RegExp(stringSlug, "i");
 
             const hotels = await Hotel.find({
+                deleted: false,
+                status: 'active',
                 $or: [
                     { name: keywordRegex },
-                    { slug_city: stringSlugRegex }
+                    { slug_city: stringSlugRegex },
+                    { "location.city": keywordRegex },
+                    { "location.address": keywordRegex },
+                    { "location.country": keywordRegex }
                 ]
             });
 

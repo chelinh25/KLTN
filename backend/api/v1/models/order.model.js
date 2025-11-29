@@ -42,6 +42,10 @@ const orderSchema = new mongoose.Schema({
         }
     ],
     voucherCode: String,
+    discountAmount: {
+        type: Number,
+        default: 0
+    },
     totalPrice: Number,
     updateBy: [
         {

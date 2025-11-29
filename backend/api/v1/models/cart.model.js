@@ -16,6 +16,7 @@ const cartSchema = new mongoose.Schema({
     hotels: [
         {
             hotel_id: String,
+            relatedTourSlug: String, // Slug của tour liên quan (nếu khách sạn được chọn từ trang tour)
             rooms: [
                 {
                     room_id: String,

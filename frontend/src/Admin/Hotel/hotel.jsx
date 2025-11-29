@@ -29,7 +29,7 @@ import { tokens } from "../../theme";
 import Header from "../../components/Scenes/Header";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { getHotels, createHotel, updateHotel, changeHotelStatus, deleteHotel } from "./HotelApi";
+import { getHotels, createHotel, updateHotel, changeHotelStatus, deleteHotel, getAllTours } from "./HotelApi";
 import { useAdminAuth } from "../../context/AdminContext";
 import RoomManagement from "./RoomManagement";
 import EditIcon from "@mui/icons-material/Edit";
@@ -60,6 +60,7 @@ const Hotels = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [hotelToDelete, setHotelToDelete] = useState(null);
+  const [tours, setTours] = useState([]);
 
   const fetchHotels = useCallback(
     async (page = 1, search = "", status = "all", sortKey = "", sortValue = "") => {
@@ -136,6 +137,7 @@ const Hotels = () => {
     const token = adminToken || localStorage.getItem("adminToken");
     if (token) {
       fetchHotels(currentPage, searchText, statusFilter);
+      fetchTours();
     } else {
       toast.error("Vui lòng đăng nhập để tiếp tục!", { position: "top-right" });
       setTimeout(() => {
@@ -143,6 +145,18 @@ const Hotels = () => {
       }, 2000);
     }
   }, [adminToken, navigate, currentPage, fetchHotels]);
+
+  const fetchTours = async () => {
+    try {
+      const token = adminToken || localStorage.getItem("adminToken");
+      const response = await getAllTours(token);
+      if (response.code === 200) {
+        setTours(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tours:", error);
+    }
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -632,6 +646,15 @@ const Hotels = () => {
         formData.append("location[city]", values.city);
         formData.append("location[country]", values.country);
         formData.append("location[address]", values.address);
+        if (values.latitude) {
+          formData.append("location[latitude]", values.latitude);
+        }
+        if (values.longitude) {
+          formData.append("location[longitude]", values.longitude);
+        }
+        if (values.tour_id) {
+          formData.append("tour_id", values.tour_id);
+        }
         formData.append("status", "active");
 
         // Gửi tất cả ảnh (mới và cũ)
@@ -706,6 +729,9 @@ const Hotels = () => {
                 city: hotel.location?.city || "",
                 country: hotel.location?.country || "",
                 address: hotel.location?.address || "",
+                latitude: hotel.location?.latitude || "",
+                longitude: hotel.location?.longitude || "",
+                tour_id: hotel.tour_id || "",
                 images: [],
               }
               : initialValues
@@ -839,6 +865,34 @@ const Hotels = () => {
                 <TextField
                   fullWidth
                   variant="filled"
+                  type="number"
+                  label="Latitude (Ví dụ: 16.0544)"
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  value={values.latitude}
+                  name="latitude"
+                  error={!!touched.latitude && !!errors.latitude}
+                  helperText={touched.latitude && errors.latitude}
+                  sx={{ gridColumn: "span 2", maxWidth: "250px" }}
+                  inputProps={{ step: "any" }}
+                />
+                <TextField
+                  fullWidth
+                  variant="filled"
+                  type="number"
+                  label="Longitude (Ví dụ: 108.2022)"
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  value={values.longitude}
+                  name="longitude"
+                  error={!!touched.longitude && !!errors.longitude}
+                  helperText={touched.longitude && errors.longitude}
+                  sx={{ gridColumn: "span 2", maxWidth: "250px" }}
+                  inputProps={{ step: "any" }}
+                />
+                <TextField
+                  fullWidth
+                  variant="filled"
                   type="text"
                   label="Mô tả"
                   onBlur={handleBlur}
@@ -849,6 +903,34 @@ const Hotels = () => {
                   helperText={touched.description && errors.description}
                   sx={{ gridColumn: "span 4", maxWidth: "500px" }}
                 />
+                <FormControl 
+                  fullWidth 
+                  variant="filled"
+                  sx={{ gridColumn: "span 2", maxWidth: "250px" }}
+                  error={!!touched.tour_id && !!errors.tour_id}
+                >
+                  <InputLabel>Tour liên quan (tùy chọn)</InputLabel>
+                  <Select
+                    name="tour_id"
+                    value={values.tour_id}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  >
+                    <MenuItem value="">
+                      <em>Không chọn tour</em>
+                    </MenuItem>
+                    {tours.map((tour) => (
+                      <MenuItem key={tour._id} value={tour._id}>
+                        {tour.title} ({tour.code})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {touched.tour_id && errors.tour_id && (
+                    <Typography color="error" variant="caption">
+                      {errors.tour_id}
+                    </Typography>
+                  )}
+                </FormControl>
               </Box>
               <Box display="flex" justifyContent="end" mt="20px" gap={2}>
                 <Button variant="contained" onClick={onClose}>
@@ -1154,6 +1236,9 @@ const initialValues = {
   city: "",
   country: "",
   address: "",
+  latitude: "",
+  longitude: "",
+  tour_id: "",
   images: [],
 };
 

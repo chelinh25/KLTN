@@ -97,13 +97,13 @@ const Tours = () => {
     // Áp dụng bộ lọc người dùng (title, category, price)
     if (filters.title) {
       filtered = filtered.filter((tour) =>
-        tour.title.toLowerCase().includes(filters.title.toLowerCase())
+        tour.title?.toLowerCase().includes(filters.title.toLowerCase())
       );
     }
 
     if (filters.category.length > 0) {
       filtered = filtered.filter((tour) =>
-        tour.category_id && filters.category.includes(tour.category_id)
+        tour.category_id && Array.isArray(filters.category) && filters.category.includes(tour.category_id)
       );
     }
 

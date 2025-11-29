@@ -45,8 +45,8 @@ const HotelServices = () => {
       const locationLower = filters.location.toLowerCase();
       filtered = filtered.filter(
         (hotel) =>
-          hotel.location.city.toLowerCase().includes(locationLower) ||
-          hotel.location.country.toLowerCase().includes(locationLower)
+          hotel.location?.city?.toLowerCase().includes(locationLower) ||
+          hotel.location?.country?.toLowerCase().includes(locationLower)
       );
     }
 

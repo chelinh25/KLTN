@@ -5,8 +5,10 @@ import { tokens } from "../../theme";
 import { useEffect, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { getRevenueStatistics } from "./BarApi";
+import { getRevenueStatistics, exportExcelReport, exportPDFReport } from "./BarApi";
 import { useNavigate } from "react-router-dom";
+import DownloadIcon from '@mui/icons-material/Download';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 const BarChart = ({ isDashboard = false }) => {
   const theme = useTheme();
@@ -191,6 +193,70 @@ const BarChart = ({ isDashboard = false }) => {
     setShowTable((prev) => !prev);
   };
 
+  const handleExportExcel = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        status: "paid",
+      };
+
+      if (filterType === "year") {
+        params.year = selectedYear;
+      } else if (filterType === "month") {
+        params.year = selectedYear;
+        if (selectedMonth) params.month = selectedMonth;
+      } else if (filterType === "range") {
+        if (startDate && endDate) {
+          params.startDate = startDate;
+          params.endDate = endDate;
+        } else {
+          toast.error("Vui lòng chọn đầy đủ khoảng thời gian!", { position: "top-right" });
+          setLoading(false);
+          return;
+        }
+      }
+
+      await exportExcelReport(params);
+      toast.success("Xuất báo cáo Excel thành công!", { position: "top-right" });
+    } catch (error) {
+      toast.error("Lỗi khi xuất báo cáo Excel!", { position: "top-right" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        status: "paid",
+      };
+
+      if (filterType === "year") {
+        params.year = selectedYear;
+      } else if (filterType === "month") {
+        params.year = selectedYear;
+        if (selectedMonth) params.month = selectedMonth;
+      } else if (filterType === "range") {
+        if (startDate && endDate) {
+          params.startDate = startDate;
+          params.endDate = endDate;
+        } else {
+          toast.error("Vui lòng chọn đầy đủ khoảng thời gian!", { position: "top-right" });
+          setLoading(false);
+          return;
+        }
+      }
+
+      await exportPDFReport(params);
+      toast.success("Xuất báo cáo PDF thành công!", { position: "top-right" });
+    } catch (error) {
+      toast.error("Lỗi khi xuất báo cáo PDF!", { position: "top-right" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     { field: "month", headerName: "Tháng", flex: 0.5 },
     { field: "tours", headerName: "Số lượng Tours", flex: 0.7 },
@@ -336,6 +402,39 @@ const BarChart = ({ isDashboard = false }) => {
               onClick={handleResetFilters}
             >
               Đặt lại
+            </Button>
+          </Box>
+
+          <Box display="flex" flexDirection={isMobile ? "column" : "row"} gap={2}>
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportExcel}
+              disabled={loading || data.length === 0}
+              sx={{
+                backgroundColor: colors.greenAccent[600],
+                color: colors.grey[100],
+                "&:hover": {
+                  backgroundColor: colors.greenAccent[700],
+                },
+              }}
+            >
+              Xuất Excel
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<PictureAsPdfIcon />}
+              onClick={handleExportPDF}
+              disabled={loading || data.length === 0}
+              sx={{
+                backgroundColor: colors.redAccent[600],
+                color: colors.grey[100],
+                "&:hover": {
+                  backgroundColor: colors.redAccent[700],
+                },
+              }}
+            >
+              Xuất PDF
             </Button>
           </Box>
 
@@ -497,7 +596,13 @@ const BarChart = ({ isDashboard = false }) => {
                   legendOffset: isMobile ? -45 : -50,
                 }}
                 enableLabel={true}
-                label={(d) => (statType === "quantity" ? d.value : `${Math.round(d.value / 1000)}K`)}
+                label={(d) => {
+                  if (statType === "quantity") {
+                    return Math.round(d.value);
+                  }
+                  // Hiển thị số tiền đầy đủ với định dạng 1.000.000 đ
+                  return `${(d.value * 1000).toLocaleString('vi-VN')} đ`;
+                }}
                 labelSkipWidth={12}
                 labelSkipHeight={12}
                 labelTextColor={{

@@ -101,6 +101,14 @@ const Home = () => {
     return firstTimeStart && new Date(firstTimeStart) >= currentDate;
   });
 
+  // Lọc các tour nổi bật hợp lệ (có ngày khởi hành sau ngày hiện tại)
+  const validNewTours = newTours.filter((tour) => {
+    const firstTimeStart = tour.timeStarts && tour.timeStarts.length > 0 ? tour.timeStarts[0].timeDepart : null;
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    return firstTimeStart && new Date(firstTimeStart) >= currentDate;
+  });
+
   return (
     <>
       <Banner />
@@ -126,12 +134,12 @@ const Home = () => {
               <Col>
                 <p>{error}</p>
               </Col>
-            ) : newTours.length === 0 ? (
+            ) : validNewTours.length === 0 ? (
               <Col>
                 <p>Không có tour nổi bật nào.</p>
               </Col>
             ) : (
-              newTours.map((tour, inx) => (
+              validNewTours.map((tour, inx) => (
                 <Col md={3} sm={6} xs={12} className="mb-5" key={inx}>
                   <PopularCard val={tour} />
                 </Col>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Container, Navbar, Offcanvas, Nav, NavDropdown } from "react-bootstrap";
+import { Container, Navbar, Offcanvas, Nav, NavDropdown, Modal, Button } from "react-bootstrap";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
@@ -10,6 +10,7 @@ const Header = () => {
   const [open, setOpen] = useState(false);
   const [showServicesDropdown, setShowServicesDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const servicesDropdownRef = useRef(null);
@@ -63,9 +64,18 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
+  const handleOpenLogoutModal = () => {
+    setShowLogoutModal(true);
     setShowUserDropdown(false);
+  };
+
+  const handleCloseLogoutModal = () => {
+    setShowLogoutModal(false);
+  };
+
+  const handleConfirmLogout = async () => {
+    setShowLogoutModal(false);
+    await logout();
   };
 
   const toggleMenu = () => setOpen(!open);
@@ -216,7 +226,7 @@ const Header = () => {
                     >
                       Đổi mật khẩu
                     </div>
-                    <div className="dropdown-item" onClick={handleLogout}>
+                    <div className="dropdown-item" onClick={handleOpenLogoutModal}>
                       Đăng xuất
                     </div>
                   </div>
@@ -234,6 +244,24 @@ const Header = () => {
           </div>
         </Navbar>
       </Container>
+
+      {/* Modal xác nhận đăng xuất */}
+      <Modal show={showLogoutModal} onHide={handleCloseLogoutModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Xác nhận đăng xuất</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Bạn có chắc chắn muốn đăng xuất không?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseLogoutModal}>
+            Không
+          </Button>
+          <Button variant="danger" onClick={handleConfirmLogout}>
+            Có
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </header>
   );
 };

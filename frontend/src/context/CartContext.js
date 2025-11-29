@@ -72,6 +72,7 @@ export const CartProvider = ({ children }) => {
           quantity: item.quantity,
           checkIn: checkInDate.toISOString().split("T")[0],
           checkOut: checkOutDate.toISOString().split("T")[0],
+          relatedTourSlug: item.relatedTourSlug || null, // Thêm tourSlug liên quan nếu có
         };
         await api.post(`/api/v1/carts/add/${item.hotelId}/${item.roomId}`, payload);
       }

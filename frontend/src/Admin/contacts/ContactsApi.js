@@ -29,3 +29,26 @@ export const deleteContact = async (id) => {
     // console.log("deleteContact response:", response.data);
     return response.data;
 };
+
+// Tạo tài khoản người dùng mới
+export const createUser = async (userData) => {
+    try {
+        const response = await api.post(`${BASE_URL}/create`, userData, {
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        return response.data;
+    } catch (err) {
+        console.error("createUser error:", err.response?.data);
+        throw err;
+    }
+};
+
+// Cập nhật tài khoản người dùng
+export const updateUser = async (id, userData) => {
+    const response = await api.patch(`${BASE_URL}/edit/${id}`, userData, {
+        headers: { "Content-Type": "application/json" },
+    });
+    return response.data;
+};

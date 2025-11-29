@@ -8,7 +8,15 @@ const Room = require("../../models/room.model");
 module.exports.addPost = async (req, res) => {
     const tourId = req.params.tour_id;
     const { timeDepart, quantity } = req.body;
-    const cartId = req.cart.id;
+    
+    if (!req.cart || !req.cart._id) {
+        return res.status(400).json({
+            code: 400,
+            message: "Không tìm thấy giỏ hàng"
+        });
+    }
+    
+    const cartId = req.cart._id;
 
     if (!quantity || quantity <= 0 || new Date(timeDepart) < Date.now()) {
         return res.status(400).json({
@@ -120,7 +128,16 @@ module.exports.addPostHotel = async (req, res) => {
     const quantity = parseInt(req.body.quantity);
     const checkIn = new Date(req.body.checkIn);
     const checkOut = new Date(req.body.checkOut);
-    const cartId = req.cart.id;
+    const relatedTourSlug = req.body.relatedTourSlug || null; // Lưu tourSlug liên quan nếu có
+    
+    if (!req.cart || !req.cart._id) {
+        return res.status(400).json({
+            code: 400,
+            message: "Không tìm thấy giỏ hàng"
+        });
+    }
+    
+    const cartId = req.cart._id;
 
     if (!quantity || quantity <= 0) {
         return res.status(400).json({
@@ -238,6 +255,7 @@ module.exports.addPostHotel = async (req, res) => {
                 $push: {
                     hotels: {
                         hotel_id: hotelId,
+                        relatedTourSlug: relatedTourSlug, // Lưu tourSlug liên quan
                         rooms: [
                             {
                                 room_id: roomId,
@@ -319,8 +337,17 @@ module.exports.index = async (req, res) => {
         const hotelProcessed = {
             hotel_id: hotelItem.hotel_id,
             hotelInfo,
-            rooms: []
+            rooms: [],
+            relatedTour: null
         };
+
+        // Lấy thông tin tour liên quan từ relatedTourSlug trong cart
+        if (hotelItem.relatedTourSlug) {
+            const relatedTour = await Tour.findOne({ slug: hotelItem.relatedTourSlug }).select("title images price discount slug");
+            if (relatedTour) {
+                hotelProcessed.relatedTour = relatedTour;
+            }
+        }
 
         for (const roomItem of hotelItem.rooms) {
             const roomInfo = await Room.findById(roomItem.room_id);
@@ -359,7 +386,7 @@ module.exports.index = async (req, res) => {
 
 // [PATCH] /api/v1/carts/delete/:tour_id
 module.exports.delete = async (req, res) => {
-    const cartId = req.cart.id;
+    const cartId = req.cart._id;
     const tourId = req.params.tour_id;
 
     const data = await Cart.findOneAndUpdate({
@@ -378,7 +405,7 @@ module.exports.delete = async (req, res) => {
 
 // [PATCH] /api/v1/carts/deleteHotel/:hotel_id/:room_id
 module.exports.deleteRoom = async (req, res) => {
-    const cartId = req.cart.id;
+    const cartId = req.cart._id;
     const hotelId = req.params.hotel_id;
     const roomId = req.params.room_id;
 
@@ -433,7 +460,7 @@ module.exports.deleteRoom = async (req, res) => {
 
 // [PATCH] /api/v1/carts/deleteHotel/:hotel_id
 module.exports.deleteHotel = async (req, res) => {
-    const cartId = req.cart.id;
+    const cartId = req.cart._id;
     const hotelId = req.params.hotel_id;
 
     const cart = await Cart.findOne({
@@ -464,7 +491,7 @@ module.exports.deleteHotel = async (req, res) => {
 module.exports.update = async (req, res) => {
     const tourId = req.params.tour_id;
     const quantity = req.query.quantity;
-    const cartId = req.cart.id;
+    const cartId = req.cart._id;
     const timeDepart = new Date(req.params.timeDepart);
 
 
@@ -545,7 +572,7 @@ module.exports.update = async (req, res) => {
 
 // [PATCH] /api/v1/carts/updateRoom/:hotel_id/:room_id?quantity=
 module.exports.updateRoom = async (req, res) => {
-    const cartId = req.cart.id;
+    const cartId = req.cart._id;
     const hotelId = req.params.hotel_id;
     const roomId = req.params.room_id;
     const quantity = parseInt(req.query.quantity);
@@ -614,7 +641,7 @@ module.exports.updateRoom = async (req, res) => {
 
 // [PATCH] /api/v1/carts/updateRoomDate/:hotel_id/:room_id?newCheckIn=&newCheckOut=
 module.exports.updateRoomDate = async (req, res) => {
-    const cartId = req.cart.id;
+    const cartId = req.cart._id;
     const hotelId = req.params.hotel_id;
     const roomId = req.params.room_id;
 

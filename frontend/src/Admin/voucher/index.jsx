@@ -61,6 +61,7 @@ const VoucherControl = () => {
         description: "",
         quantity: "",
         discount: "",
+        minOrderAmount: 0,
         startDate: "",
         endDate: "",
     });
@@ -423,6 +424,7 @@ const VoucherControl = () => {
             description: "",
             quantity: "",
             discount: "",
+            minOrderAmount: 0,
             startDate: "",
             endDate: "",
         });
@@ -444,6 +446,7 @@ const VoucherControl = () => {
             description: voucher.description || "",
             quantity: voucher.quantity || "",
             discount: voucher.discount || "",
+            minOrderAmount: voucher.minOrderAmount || 0,
             startDate: formatDate(voucher.startDate),
             endDate: formatDate(voucher.endDate),
         });
@@ -932,6 +935,17 @@ const VoucherControl = () => {
                             setNewVoucher({ ...newVoucher, discount: e.target.value })
                         }
                         required
+                    />
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Giá trị đơn hàng tối thiểu (VNĐ)"
+                        type="number"
+                        value={newVoucher.minOrderAmount}
+                        onChange={(e) =>
+                            setNewVoucher({ ...newVoucher, minOrderAmount: e.target.value })
+                        }
+                        helperText="Nhập 0 nếu không yêu cầu giá trị tối thiểu"
                     />
                     <TextField
                         fullWidth

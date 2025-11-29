@@ -45,11 +45,12 @@ module.exports.index = async (req, res) => {
         };
 
         for (const timeStart of item.timeStarts) {
-            const totalPrice = timeStart.stock * parseInt(priceNew);
+            const quantity = timeStart.quantity || timeStart.stock || 0;
+            const totalPrice = quantity * parseInt(priceNew);
 
             tourProcessed.timeStarts.push({
                 timeDepart: timeStart.timeDepart,
-                quantity: timeStart.quantity,
+                quantity: quantity,
                 totalPrice: totalPrice
             });
 
@@ -69,8 +70,17 @@ module.exports.index = async (req, res) => {
         const hotelProcessed = {
             hotel_id: hotelItem.hotel_id,
             hotelInfo,
-            rooms: []
+            rooms: [],
+            relatedTour: null
         };
+
+        // Lấy thông tin tour liên quan nếu có
+        if (hotelInfo.tour_id) {
+            const relatedTour = await Tour.findById(hotelInfo.tour_id).select("title images price discount slug");
+            if (relatedTour) {
+                hotelProcessed.relatedTour = relatedTour;
+            }
+        }
 
         for (const roomItem of hotelItem.rooms) {
             const roomInfo = await Room.findById(roomItem.room_id);
@@ -106,9 +116,9 @@ module.exports.index = async (req, res) => {
 
 // [POST] api/v1/checkout/order
 module.exports.order = async (req, res) => {
-    const cartId = req.cart.id;
+    const cartId = req.cart._id;
     const { fullName, phone, email, note, voucherCode } = req.body.userInfor;
-    const user_id = req.user.id;
+    const user_id = req.user._id;
 
     const cart = await Cart.findOne({ _id: cartId });
     if (!cart || (cart.tours.length === 0 && cart.hotels.length === 0)) {
@@ -229,24 +239,27 @@ module.exports.order = async (req, res) => {
     // Xử lý voucher nếu có
     if (voucherCode) {
         const voucher = await Voucher.findOne({
-            code: voucherCode,
+            code: voucherCode.toUpperCase(),
             deleted: false
         });
 
-        if (voucher) {
-            if (new Date() > new Date(voucher.endDate)) {
-                return res.json({ error: "400", message: "Voucher đã hết hạn!" });
-            }
-            if (voucher.quantity <= 0) {
-                return res.json({ error: "400", message: "Voucher đã hết số lượng!" });
-            }
-
-            const discountData = tourHelper.calculateDiscount(totalPrice, voucher);
-            discountAmount = discountData.discountAmount;
-            totalPrice = discountData.finalPrice;
-
-            await Voucher.updateOne({ _id: voucher._id }, { $inc: { quantity: -1 } });
+        if (!voucher) {
+            return res.json({ code: "400", message: "Voucher không tồn tại!" });
         }
+
+        if (new Date() > new Date(voucher.endDate)) {
+            return res.json({ code: "400", message: "Voucher đã hết hạn!" });
+        }
+        
+        if (voucher.quantity <= 0) {
+            return res.json({ code: "400", message: "Voucher đã hết số lượng!" });
+        }
+
+        const discountData = tourHelper.calculateDiscount(totalPrice, voucher);
+        discountAmount = discountData.discountAmount;
+        totalPrice = discountData.finalPrice;
+
+        await Voucher.updateOne({ _id: voucher._id }, { $inc: { quantity: -1 } });
     }
 
     const countOrder = await Order.countDocuments();
@@ -260,6 +273,7 @@ module.exports.order = async (req, res) => {
         tours,
         hotels,
         voucherCode,
+        discountAmount,
         totalPrice,
         updateBy: []
     });
@@ -295,17 +309,17 @@ module.exports.createPayment = async (req, res) => {
 
         const order = await Order.findById(orderId);
 
-        if (req.user.id !== order.user_id) {
-            return res.json({
-                code: 400,
-                message: "Bạn không có quyền truy cập vào đơn hàng này!"
-            });
-        }
-
         if (!order) {
             return res.json({
                 error: "400",
                 message: "Không tìm thấy đơn hàng!"
+            });
+        }
+
+        if (req.user._id.toString() !== order.user_id.toString()) {
+            return res.json({
+                code: 400,
+                message: "Bạn không có quyền truy cập vào đơn hàng này!"
             });
         }
 
@@ -318,7 +332,7 @@ module.exports.createPayment = async (req, res) => {
             vnp_TxnRef: order.orderCode + Date.now(),
             vnp_OrderInfo: 'Thanh toan don hang ' + order._id,
             vnp_OrderType: "other",
-            vnp_ReturnUrl: "http://localhost:3000/api/v1/checkout/success",
+            vnp_ReturnUrl: `${process.env.FE_URL}/payment-callback`,
             vnp_Locale: "vn",
             vnp_CreateDate: now.format("YYYYMMDDHHmmss"),
             vnp_ExpireDate: expire.format("YYYYMMDDHHmmss"),
@@ -334,7 +348,89 @@ module.exports.createPayment = async (req, res) => {
     }
 };
 
-// [GET] api/v1/checkout/success
+// [GET] api/v1/checkout/verify-payment
+module.exports.verifyPayment = async (req, res) => {
+    let verify;
+    try {
+        verify = vnpay.verifyReturnUrl(req.query);
+        if (!verify.isVerified) {
+            return res.json({
+                code: 400,
+                message: "Dữ liệu thanh toán không hợp lệ!"
+            });
+        }
+        if (!verify.isSuccess) {
+            return res.json({
+                code: 400,
+                message: "Thanh toán thất bại!"
+            });
+        }
+    } catch (error) {
+        return res.json({
+            code: 500,
+            message: "Lỗi xử lý thanh toán!"
+        });
+    }
+
+    // Kiểm tra thông tin đơn hàng và xử lý tương ứng
+    const vnp_OrderInfo = verify.vnp_OrderInfo;
+    const parts = vnp_OrderInfo.split(' ');
+    const idOrder = parts[parts.length - 1];
+    const order = await Order.findOneAndUpdate(
+        { _id: idOrder },
+        { status: "paid", paymentInfo: verify },
+        { new: true }
+    );
+
+    if (!order) {
+        return res.json({
+            code: 400,
+            message: "Không tìm thấy đơn hàng!"
+        });
+    }
+
+    // Gửi email xác nhận
+    const subject = `Xác nhận đơn hàng - Cảm ơn ${order.userInfor.fullName} đã sử dụng dịch vụ của chúng tôi!`;
+
+    const html = `
+  <p>Chào <strong>${order.userInfor.fullName}</strong>,</p>
+
+  <p>
+    Cảm ơn bạn đã đặt dịch vụ tại <strong>GoTravel</strong>!<br>
+    Đơn hàng của bạn đã được xác nhận và đang được xử lý.
+  </p>
+
+  <p>
+    Dưới đây là thông tin đơn hàng của bạn:
+    <ul>
+      <li><strong>Mã đơn hàng:</strong> ${order.orderCode}</li>
+      <li><strong>Ngày đặt:</strong> ${new Date(order.createdAt).toLocaleDateString('vi-VN')}</li>
+      <li><strong>Tổng thanh toán:</strong> ${order.totalPrice.toLocaleString('vi-VN')} VNĐ</li>
+    </ul>
+  </p>
+
+  <p>
+    Hóa đơn điện tử sẽ được gửi kèm trong email này hoặc có thể được xem trong tài khoản của bạn trên website.
+  </p>
+
+  <p>
+    Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi.
+  </p>
+
+  <p>Thân mến,<br>
+  <strong>GoTravel</strong></p>
+`;
+
+    sendMailHelper.sendMail(order.userInfor.email, subject, html);
+
+    return res.json({
+        code: 200,
+        message: "Thanh toán thành công!",
+        orderCode: order.orderCode
+    });
+};
+
+// [GET] api/v1/checkout/success (Giữ lại cho trường hợp cần)
 module.exports.paymentCallback = async (req, res) => {
     let verify;
     try {
@@ -405,7 +501,7 @@ module.exports.cancel = async (req, res) => {
     const orderId = req.params.orderId;
     const order = await Order.findById(orderId);
 
-    if (req.user.id !== order.user_id) {
+    if (req.user._id.toString() !== order.user_id.toString()) {
         return res.json({
             code: 400,
             message: "Bạn không có quyền hủy đơn hàng này!"

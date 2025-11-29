@@ -76,8 +76,9 @@
   background-color: #ff4d4f;
   color: #fff;
 }
+.table td .status-refund,
 .table td .status-refunded {
-  background-color: #e6d70e;
+  background-color: #17a2b8;
   color: #fff;
 }
 

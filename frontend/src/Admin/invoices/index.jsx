@@ -37,7 +37,6 @@ import {
   getInvoices,
   getInvoiceDetail,
   deleteInvoice,
-  changeOrderStatus,
   refundOrder,
 } from "./InvoicesApi";
 import { useAdminAuth } from "../../context/AdminContext";
@@ -48,7 +47,6 @@ const InvoicesControl = () => {
   const colors = tokens(theme.palette.mode);
   const { adminToken } = useAdminAuth();
   const [invoices, setInvoices] = useState([]);
-  const [allInvoices, setAllInvoices] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -86,7 +84,6 @@ const InvoicesControl = () => {
 
         const data = await getInvoices(adminToken, params);
         if (!data || !Array.isArray(data.orders)) {
-          setAllInvoices([]);
           setInvoices([]);
           setTotalPages(1);
           toast.info("Không có hóa đơn nào để hiển thị!", { position: "top-right" });
@@ -114,7 +111,6 @@ const InvoicesControl = () => {
           };
         });
 
-        setAllInvoices(formattedData);
         setInvoices(formattedData);
         setTotalPages(data.totalPage || 1);
 
@@ -581,16 +577,7 @@ const InvoicesControl = () => {
     if (!currentInvoice?.order?._id) return;
     setLoading(true);
     try {
-      const refundData = {
-        orderId: currentInvoice.order._id,
-        amount: Math.floor(currentInvoice.order.totalPrice * 0.7),
-        bankName: currentInvoice.order.inforCancel.bankName,
-        accountNumber: currentInvoice.order.inforCancel.numberAccount,
-        transactionNo: currentInvoice.order.paymentInfo.vnp_TransactionNo,
-        txnRef: currentInvoice.order.paymentInfo.vnp_TxnRef,
-      };
-
-      const response = await refundOrder(adminToken, refundData);
+      const response = await refundOrder(adminToken, currentInvoice.order._id);
       if (response.code === 200) {
         setCurrentInvoice({
           ...currentInvoice,

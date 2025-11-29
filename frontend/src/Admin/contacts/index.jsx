@@ -17,6 +17,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TextField,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useTheme } from "@mui/material";
@@ -24,6 +25,8 @@ import { tokens } from "../../theme";
 import SearchIcon from "@mui/icons-material/Search";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -31,6 +34,8 @@ import {
   changeContactStatus,
   getContactDetail,
   deleteContact,
+  createUser,
+  updateUser,
 } from "./ContactsApi";
 import { useAdminAuth } from "../../context/AdminContext";
 import { useNavigate } from "react-router-dom";
@@ -46,10 +51,20 @@ const ContactsControl = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOption, setSortOption] = useState("createdAt_desc");
   const [sortModel, setSortModel] = useState([{ field: "createdAt", sort: "desc" }]);
+  const [open, setOpen] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [deleteContactId, setDeleteContactId] = useState(null);
   const [currentContact, setCurrentContact] = useState(null);
+  const [isEdit, setIsEdit] = useState(false);
+  const [currentId, setCurrentId] = useState(null);
+  const [newUser, setNewUser] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -419,6 +434,38 @@ const ContactsControl = () => {
     fetchContacts(value, searchText, statusFilter, sortKey, sortValue);
   };
 
+  const handleOpen = () => {
+    setIsEdit(false);
+    setNewUser({
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      phone: "",
+    });
+    setError("");
+    setOpen(true);
+  };
+
+  const handleEdit = (user) => {
+    setIsEdit(true);
+    setCurrentId(user._id);
+    setNewUser({
+      fullName: user.fullName || "",
+      email: user.email || "",
+      password: "",
+      confirmPassword: "",
+      phone: user.phone || "",
+    });
+    setError("");
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setError("");
+  };
+
   const handleOpenDetail = async (contact) => {
     setLoading(true);
     try {
@@ -473,19 +520,288 @@ const ContactsControl = () => {
     }
   };
 
+  const handleAdd = async () => {
+    if (!newUser.fullName) {
+      setError("Vui lòng nhập họ tên!");
+      return;
+    }
+    if (!newUser.email || !/^\S+@\S+\.\S+$/.test(newUser.email)) {
+      setError("Vui lòng nhập email hợp lệ!");
+      return;
+    }
+    if (!newUser.password) {
+      setError("Vui lòng nhập mật khẩu!");
+      return;
+    }
+    if (newUser.password.length < 6) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự!");
+      return;
+    }
+    if (!newUser.confirmPassword) {
+      setError("Vui lòng xác nhận mật khẩu!");
+      return;
+    }
+    if (newUser.password !== newUser.confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp!");
+      return;
+    }
+    if (!newUser.phone) {
+      setError("Vui lòng nhập số điện thoại!");
+      return;
+    }
+    if (!/^\d{10,11}$/.test(newUser.phone)) {
+      setError("Số điện thoại không hợp lệ!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userData = {
+        fullName: newUser.fullName,
+        email: newUser.email,
+        password: newUser.password,
+        confirmPassword: newUser.confirmPassword,
+        phone: newUser.phone,
+      };
+
+      const response = await createUser(userData);
+      if (response.code === 200) {
+        let sortKey = "";
+        let sortValue = "";
+        switch (sortOption) {
+          case "stt_asc":
+            sortKey = "_id";
+            sortValue = "asc";
+            break;
+          case "stt_desc":
+            sortKey = "_id";
+            sortValue = "desc";
+            break;
+          case "fullName_asc":
+            sortKey = "fullName";
+            sortValue = "asc";
+            break;
+          case "fullName_desc":
+            sortKey = "fullName";
+            sortValue = "desc";
+            break;
+          case "email_asc":
+            sortKey = "email";
+            sortValue = "asc";
+            break;
+          case "email_desc":
+            sortKey = "email";
+            sortValue = "desc";
+            break;
+          case "phone_asc":
+            sortKey = "phone";
+            sortValue = "asc";
+            break;
+          case "phone_desc":
+            sortKey = "phone";
+            sortValue = "desc";
+            break;
+          case "createdAt_asc":
+            sortKey = "createdAt";
+            sortValue = "asc";
+            break;
+          case "createdAt_desc":
+            sortKey = "createdAt";
+            sortValue = "desc";
+            break;
+          default:
+            sortKey = "createdAt";
+            sortValue = "desc";
+            break;
+        }
+        fetchContacts(currentPage, searchText, statusFilter, sortKey, sortValue);
+        handleClose();
+        toast.success("Thêm tài khoản người dùng thành công!", { position: "top-right" });
+      } else {
+        setError(response.message || "Thêm tài khoản thất bại!");
+        toast.error(response.message || "Thêm tài khoản thất bại!", { position: "top-right" });
+      }
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message ||
+        "Thêm tài khoản thất bại!";
+      setError(errorMessage);
+      toast.error(errorMessage, { position: "top-right" });
+      console.error("Add user error:", err.response?.data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!newUser.fullName) {
+      setError("Vui lòng nhập họ tên!");
+      return;
+    }
+    if (!newUser.email || !/^\S+@\S+\.\S+$/.test(newUser.email)) {
+      setError("Vui lòng nhập email hợp lệ!");
+      return;
+    }
+    if (!newUser.phone) {
+      setError("Vui lòng nhập số điện thoại!");
+      return;
+    }
+    if (!/^\d{10,11}$/.test(newUser.phone)) {
+      setError("Số điện thoại không hợp lệ!");
+      return;
+    }
+    if (newUser.password && newUser.password.length < 6) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự!");
+      return;
+    }
+    if (newUser.password && newUser.password !== newUser.confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userData = {
+        fullName: newUser.fullName,
+        email: newUser.email,
+        phone: newUser.phone,
+      };
+      
+      if (newUser.password) {
+        userData.password = newUser.password;
+        userData.confirmPassword = newUser.confirmPassword;
+      }
+
+      const response = await updateUser(currentId, userData);
+      if (response.code === 200) {
+        let sortKey = "";
+        let sortValue = "";
+        switch (sortOption) {
+          case "stt_asc":
+            sortKey = "_id";
+            sortValue = "asc";
+            break;
+          case "stt_desc":
+            sortKey = "_id";
+            sortValue = "desc";
+            break;
+          case "fullName_asc":
+            sortKey = "fullName";
+            sortValue = "asc";
+            break;
+          case "fullName_desc":
+            sortKey = "fullName";
+            sortValue = "desc";
+            break;
+          case "email_asc":
+            sortKey = "email";
+            sortValue = "asc";
+            break;
+          case "email_desc":
+            sortKey = "email";
+            sortValue = "desc";
+            break;
+          case "phone_asc":
+            sortKey = "phone";
+            sortValue = "asc";
+            break;
+          case "phone_desc":
+            sortKey = "phone";
+            sortValue = "desc";
+            break;
+          case "createdAt_asc":
+            sortKey = "createdAt";
+            sortValue = "asc";
+            break;
+          case "createdAt_desc":
+            sortKey = "createdAt";
+            sortValue = "desc";
+            break;
+          default:
+            sortKey = "createdAt";
+            sortValue = "desc";
+            break;
+        }
+        fetchContacts(currentPage, searchText, statusFilter, sortKey, sortValue);
+        handleClose();
+        toast.success("Cập nhật tài khoản người dùng thành công!", { position: "top-right" });
+      } else {
+        setError(response.message || "Cập nhật tài khoản thất bại!");
+        toast.error(response.message || "Cập nhật tài khoản thất bại!", { position: "top-right" });
+      }
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message ||
+        "Cập nhật tài khoản thất bại!";
+      setError(errorMessage);
+      toast.error(errorMessage, { position: "top-right" });
+      console.error("Update user error:", err.response?.data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteContactId) return;
     setLoading(true);
     try {
       const response = await deleteContact(deleteContactId);
       if (response.code === 200) {
-        fetchContacts(currentPage, searchText, statusFilter);
-        toast.success("Xóa liên hệ thành công!", { position: "top-right" });
+        let sortKey = "";
+        let sortValue = "";
+        switch (sortOption) {
+          case "stt_asc":
+            sortKey = "_id";
+            sortValue = "asc";
+            break;
+          case "stt_desc":
+            sortKey = "_id";
+            sortValue = "desc";
+            break;
+          case "fullName_asc":
+            sortKey = "fullName";
+            sortValue = "asc";
+            break;
+          case "fullName_desc":
+            sortKey = "fullName";
+            sortValue = "desc";
+            break;
+          case "email_asc":
+            sortKey = "email";
+            sortValue = "asc";
+            break;
+          case "email_desc":
+            sortKey = "email";
+            sortValue = "desc";
+            break;
+          case "phone_asc":
+            sortKey = "phone";
+            sortValue = "asc";
+            break;
+          case "phone_desc":
+            sortKey = "phone";
+            sortValue = "desc";
+            break;
+          case "createdAt_asc":
+            sortKey = "createdAt";
+            sortValue = "asc";
+            break;
+          case "createdAt_desc":
+            sortKey = "createdAt";
+            sortValue = "desc";
+            break;
+          default:
+            sortKey = "createdAt";
+            sortValue = "desc";
+            break;
+        }
+        fetchContacts(currentPage, searchText, statusFilter, sortKey, sortValue);
+        toast.success("Xóa tài khoản thành công!", { position: "top-right" });
       } else {
-        toast.error(response.message || "Xóa liên hệ thất bại!", { position: "top-right" });
+        toast.error(response.message || "Xóa tài khoản thất bại!", { position: "top-right" });
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || "Xóa liên hệ thất bại!";
+      const errorMessage = err.response?.data?.message || "Xóa tài khoản thất bại!";
       toast.error(errorMessage, { position: "top-right" });
       console.error("Delete contact error:", err.response?.data);
     } finally {
@@ -529,7 +845,7 @@ const ContactsControl = () => {
     {
       field: "actions",
       headerName: "Hành động",
-      flex: 1,
+      flex: 1.5,
       sortable: false,
       renderCell: ({ row }) => (
         <Box display="flex" gap={1} mt="25px">
@@ -541,6 +857,21 @@ const ContactsControl = () => {
             onClick={() => handleOpenDetail(row)}
           >
             Xem
+          </Button>
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: colors.blueAccent[300],
+              color: "white",
+              "&:hover": {
+                backgroundColor: colors.blueAccent[200],
+              },
+            }}
+            size="small"
+            startIcon={<EditIcon />}
+            onClick={() => handleEdit(row)}
+          >
+            Sửa
           </Button>
           <Button
             variant="contained"
@@ -575,7 +906,7 @@ const ContactsControl = () => {
         <Box sx={{ gridColumn: "span 12" }}>
           <Box display="flex" justifyContent="space-between" mb={2}>
             <Typography variant="h2" color={colors.grey[100]} fontWeight="bold">
-              Quản lý liên hệ
+              Quản lý khách hàng
             </Typography>
             <Box display="flex" gap={2}>
               <FormControl sx={{ width: 200 }}>
@@ -636,6 +967,14 @@ const ContactsControl = () => {
                   <SearchIcon />
                 </IconButton>
               </Paper>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<AddIcon />}
+                onClick={handleOpen}
+              >
+                Thêm tài khoản mới
+              </Button>
             </Box>
           </Box>
         </Box>
@@ -721,6 +1060,130 @@ const ContactsControl = () => {
           </Box>
         </Box>
       </Box>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle
+          sx={{
+            fontWeight: "bold",
+            fontSize: "1.3rem",
+            textAlign: "center",
+          }}
+        >
+          {isEdit ? "Chỉnh sửa tài khoản người dùng" : "Thêm tài khoản người dùng mới"}
+        </DialogTitle>
+        <DialogContent>
+          {error && (
+            <Typography color="error" mb={2}>
+              {error}
+            </Typography>
+          )}
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Họ và tên"
+            value={newUser.fullName}
+            onChange={(e) =>
+              setNewUser({ ...newUser, fullName: e.target.value })
+            }
+            required
+          />
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Email"
+            type="email"
+            value={newUser.email}
+            onChange={(e) =>
+              setNewUser({ ...newUser, email: e.target.value })
+            }
+            required
+          />
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Số điện thoại"
+            value={newUser.phone}
+            onChange={(e) =>
+              setNewUser({ ...newUser, phone: e.target.value })
+            }
+            required
+          />
+          {!isEdit && (
+            <>
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Mật khẩu"
+                type="password"
+                value={newUser.password}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, password: e.target.value })
+                }
+                required
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Nhập lại mật khẩu"
+                type="password"
+                value={newUser.confirmPassword}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, confirmPassword: e.target.value })
+                }
+                required
+              />
+            </>
+          )}
+          {isEdit && (
+            <>
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Mật khẩu mới (nếu muốn thay đổi)"
+                type="password"
+                value={newUser.password}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, password: e.target.value })
+                }
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Nhập lại mật khẩu mới"
+                type="password"
+                value={newUser.confirmPassword}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, confirmPassword: e.target.value })
+                }
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleClose}
+            color="error"
+            variant="contained"
+            sx={{ fontWeight: "bold" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={isEdit ? handleUpdate : handleAdd}
+            color="success"
+            variant="contained"
+            sx={{ fontWeight: "bold" }}
+            disabled={loading}
+          >
+            {loading ? (
+              <CircularProgress size={24} />
+            ) : isEdit ? (
+              "Cập nhật"
+            ) : (
+              "Lưu"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={openDetail} onClose={handleCloseDetail} maxWidth="xs" fullWidth>
         <DialogTitle
           sx={{
@@ -729,7 +1192,7 @@ const ContactsControl = () => {
             textAlign: "center",
           }}
         >
-          Chi tiết liên hệ
+          Chi tiết khách hàng
         </DialogTitle>
         <DialogContent>
           {currentContact ? (
@@ -800,10 +1263,10 @@ const ContactsControl = () => {
             textAlign: "center",
           }}
         >
-          Xác nhận xóa liên hệ
+          Xác nhận xóa tài khoản
         </DialogTitle>
         <DialogContent>
-          <Typography>Bạn có chắc chắn muốn xóa liên hệ này không?</Typography>
+          <Typography>Bạn có chắc chắn muốn xóa tài khoản người dùng này không?</Typography>
         </DialogContent>
         <DialogActions>
           <Button

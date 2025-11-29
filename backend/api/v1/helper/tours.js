@@ -7,8 +7,8 @@ module.exports.priceNewTour = (tour) => {
 module.exports.calculateDiscount = (totalPrice, voucher) => {
     if (!voucher) return { discountAmount: 0, finalPrice: totalPrice };
 
-    const discountAmount = totalPrice * (voucher.discount / 100);
-    const finalPrice = totalPrice - discountAmount;
+    const discountAmount = Math.round(totalPrice * (voucher.discount / 100));
+    const finalPrice = Math.max(0, totalPrice - discountAmount);
 
     return { discountAmount, finalPrice };
 };

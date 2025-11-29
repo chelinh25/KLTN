@@ -66,5 +66,11 @@ module.exports = function override(config) {
         return rule;
     });
 
+    // Bỏ qua các warning về source map từ node_modules
+    config.ignoreWarnings = [
+        /Failed to parse source map/,
+        /source-map-loader/
+    ];
+
     return config;
 };

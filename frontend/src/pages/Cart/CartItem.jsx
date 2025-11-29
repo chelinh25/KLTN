@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useContext } from "react";
 import { CartContext } from "../contexts/CartContext";
+import { toast } from "react-toastify";
 
 const CartItem = ({ item, removeItem }) => {
   const { updateQuantity, isLoading } = useContext(CartContext);
@@ -31,7 +32,22 @@ const CartItem = ({ item, removeItem }) => {
   };
 
   const handleRemove = () => {
-    removeItem(item);
+    // Hiển thị hộp thoại xác nhận
+    const isConfirmed = window.confirm(
+      `Bạn có chắc chắn muốn xóa "${item.title || "sản phẩm này"}" khỏi giỏ hàng không?`
+    );
+    
+    if (!isConfirmed) {
+      return; // Người dùng hủy bỏ, không thực hiện xóa
+    }
+
+    try {
+      removeItem(item);
+      // Thông báo xóa thành công
+      toast.success("Đã xóa sản phẩm khỏi giỏ hàng!");
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xóa sản phẩm!");
+    }
   };
 
   return (

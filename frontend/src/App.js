@@ -49,6 +49,7 @@ import ForgotPassword from "./pages/auth/ForgotPassword/ForgotPassword";
 import ResetPasswordForm from "./pages/auth/ForgotPassword/ResetPasswordForm";
 import CartPage from "./pages/Cart/CartPage";
 import PaymentReturn from "./pages/Cart/PaymentReturn";
+import PaymentCallback from "./pages/Cart/PaymentCallback";
 import Chatbox from "./components/Chatbox/ChatBox";
 import PrivateRoute from "./components/Common/PrivateRoute";
 import HotelServices from "./pages/HotelService/HotelServices";
@@ -181,6 +182,7 @@ const AppContent = () => {
         }
       />
       <Route path="/payment-result" element={<PaymentReturn />} />
+      <Route path="/payment-callback" element={<PaymentCallback />} />
       <Route
         path="/profile"
         element={

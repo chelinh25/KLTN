@@ -11,10 +11,11 @@ module.exports.index = async (req, res) => {
         deleted: false
     }).sort({ sold: "desc" }).limit(5);
 
-    // new tours
+    // featured tours
     const newTours = await Tour.find({
         status: "active",
-        deleted: false
+        deleted: false,
+        featured: true
     }).sort({ createdAt: -1 }).limit(5);
 
     // top hotels

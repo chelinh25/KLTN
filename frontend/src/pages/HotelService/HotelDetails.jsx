@@ -20,11 +20,12 @@ import {
 import ImageGallery from "react-image-gallery";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./hotel.css";
 
 const HotelDetails = () => {
   const { hotelId } = useParams();
+  const location = useLocation();
   const [hotel, setHotel] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [reviews, setReviews] = useState({});
@@ -36,6 +37,7 @@ const HotelDetails = () => {
   const [fetchReviewError, setFetchReviewError] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [deletingReview, setDeletingReview] = useState(null);
+  const [relatedTour, setRelatedTour] = useState(null); // Thông tin tour liên quan
   const { user } = useAuth();
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -44,7 +46,15 @@ const HotelDetails = () => {
     document.title = "Chi tiết khách sạn - GoTravel";
     window.scrollTo(0, 0);
     fetchHotelDetails();
-  }, [hotelId]);
+    
+    // Lấy tourSlug từ URL query parameters
+    const searchParams = new URLSearchParams(location.search);
+    const tourSlug = searchParams.get('tourSlug');
+    const tourTitle = searchParams.get('tourTitle');
+    if (tourSlug && tourTitle) {
+      setRelatedTour({ slug: tourSlug, title: decodeURIComponent(tourTitle) });
+    }
+  }, [hotelId, location.search]);
 
   const fetchHotelDetails = async () => {
     setLoading(true);
@@ -129,9 +139,17 @@ const HotelDetails = () => {
         quantity,
         checkIn: checkInDate.toISOString().split("T")[0], // Gửi lại định dạng YYYY-MM-DD
         checkOut: checkOutDate.toISOString().split("T")[0],
+        relatedTourSlug: relatedTour?.slug || null, // Thêm tourSlug nếu có
       });
       toast.success("Đã thêm phòng vào giỏ hàng!");
-      navigate("/cart");
+      
+      // Nếu có tour liên quan, điều hướng về trang tour, nếu không thì về cart
+      if (relatedTour?.slug) {
+        navigate(`/tours/detail/${relatedTour.slug}`);
+        toast.info("Quay lại trang tour để tiếp tục đặt tour!");
+      } else {
+        navigate("/cart");
+      }
     } catch (error) {
       console.error("Lỗi khi thêm phòng vào giỏ hàng:", error);
       toast.error(error.response?.data?.message || "Không thể thêm vào giỏ hàng!");
@@ -228,6 +246,13 @@ const HotelDetails = () => {
       />
       <section className="hotel-section">
         <Container>
+          {relatedTour && (
+            <Alert variant="info" className="mb-4">
+              <i className="bi bi-info-circle"></i> <strong>Chọn khách sạn cho tour:</strong> {relatedTour.title}
+              <br />
+              <small>Sau khi đặt phòng, bạn sẽ quay lại trang tour để hoàn tất đặt tour.</small>
+            </Alert>
+          )}
           {loading ? (
             <div className="text-center my-5">
               <Spinner animation="border" variant="primary" />
@@ -370,14 +395,18 @@ const HotelDetails = () => {
                       <Tab.Pane eventKey="3">
                         <h1 className="h3">Vị trí</h1>
                         <div className="hotel-map">
-                          <iframe
-                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1010296.398675619!2d114.41207770371561!3d-8.453560368052777!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd141d3e8100fa1%3A0x24910fb14b24e690!2sBali%2C%20Indonesia!5e0!3m2!1sen!2sin!4v1724581274620!5m2!1sen!2sin"
-                            width="100%"
-                            height="400px"
-                            allowFullScreen=""
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                          ></iframe>
+                          {hotel.location?.latitude && hotel.location?.longitude ? (
+                            <iframe
+                              src={`https://maps.google.com/maps?q=${hotel.location.latitude},${hotel.location.longitude}&hl=vi&z=15&output=embed`}
+                              width="100%"
+                              height="400px"
+                              allowFullScreen=""
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                            ></iframe>
+                          ) : (
+                            <Alert variant="info">Chưa có thông tin vị trí chính xác cho khách sạn này.</Alert>
+                          )}
                         </div>
                       </Tab.Pane>
 

@@ -81,14 +81,14 @@ module.exports.login = async (req, res) => {
         await cart.save();
     }
     const token = user.token;
-    res.cookie("cartId", cart.id);
+    res.cookie("cartId", cart._id);
     res.cookie("token", token);
 
     res.json({
         code: 200,
         message: "Đăng nhập thành công",
         token: token,
-        cartId: cart.id
+        cartId: cart._id
     });
 };
 
@@ -298,7 +298,7 @@ module.exports.orderUser = async (req, res) => {
 // [GET]/api/v1/user/ordersDetail/:id
 module.exports.orderDetail = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user._id;
         const orderId = req.params.id;
         const order = await Order.findOne({
             _id: orderId,

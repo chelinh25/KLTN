@@ -151,3 +151,14 @@ export const updateRoomStock = async (hotelId, roomId, stock, adminToken) => {
         throw err;
     }
 };
+
+export const getAllTours = async (adminToken) => {
+    try {
+        const api = createApiInstance(adminToken);
+        const response = await api.get(`${BASE_URL}/get-all-tours`);
+        return response.data;
+    } catch (err) {
+        console.error("getAllTours error:", JSON.stringify(err.response?.data, null, 2));
+        throw err;
+    }
+};

@@ -28,21 +28,25 @@ const ChatBox = () => {
       const response = await api.get("/chats");
       if (response.data.code === 200) {
         const history = response.data.history || [];
-        const formattedMessages = history
-          .filter((msg) => msg.role !== "system")
-          .map((msg) => ({
-            text: msg.content,
-            sender: msg.role === "user" ? "user" : "bot",
-          }));
-        setMessages(formattedMessages);
-      } else if (response.data.code === 400 && response.data.message.includes("token")) {
-        toast.error("Vui lòng đăng nhập để sử dụng chat!");
-        navigate("/login");
+        if (history.length === 0) {
+          setMessages([{ text: "Xin chào! Tôi có thể giúp gì cho bạn?", sender: "bot" }]);
+        } else {
+          const formattedMessages = history
+            .filter((msg) => msg.role !== "system")
+            .map((msg) => ({
+              text: msg.content,
+              sender: msg.role === "user" ? "user" : "bot",
+            }));
+          setMessages(formattedMessages);
+        }
+      } else if (response.data.code === 400 && response.data.message?.includes("token")) {
+        setMessages([{ text: "Xin chào! Tôi có thể giúp gì cho bạn?", sender: "bot" }]);
+        // Không cần toast.error vì guest có thể chat
       } else {
         setMessages([{ text: "Xin chào! Tôi có thể giúp gì cho bạn?", sender: "bot" }]);
-        toast.error(response.data.message || "Không thể tải lịch sử!");
       }
     } catch (error) {
+      // Guest user - không có lịch sử
       setMessages([{ text: "Xin chào! Tôi có thể giúp gì cho bạn?", sender: "bot" }]);
     }
   };
@@ -61,27 +65,41 @@ const ChatBox = () => {
 
     try {
       const response = await api.post("/chats", { message: userMessage.text });
-      const botMessage = {
-        text: response.data.reply || "Xin lỗi, tôi không hiểu!",
-        sender: "bot",
-        animate: true,
-      };
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || "Có lỗi xảy ra!";
-      if (error.response?.data?.message.includes("token")) {
-        toast.error("Vui lòng đăng nhập để sử dụng chat!");
-        navigate("/login");
+      
+      if (response.data && response.data.reply) {
+        const botMessage = {
+          text: response.data.reply,
+          sender: "bot",
+          animate: true,
+        };
+        setMessages((prevMessages) => [...prevMessages, botMessage]);
       } else {
         setMessages((prevMessages) => [
           ...prevMessages,
-          { text: errorMessage, sender: "bot", animate: true },
+          { text: "Xin lỗi, tôi không thể trả lời lúc này!", sender: "bot", animate: true },
         ]);
       }
+    } catch (error) {
+      console.error("Chat error:", error);
+      
+      let errorMessage = "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại! 😊";
+      
+      if (error.response?.status === 429) {
+        errorMessage = "Quá nhiều yêu cầu! Vui lòng thử lại sau ít phút. 🙏";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Hệ thống đang bận, vui lòng thử lại sau! 😊";
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { text: errorMessage, sender: "bot", animate: true },
+      ]);
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, navigate]);
+  }, [input, isLoading]);
 
   const clearChatHistory = async () => {
     try {
@@ -89,7 +107,7 @@ const ChatBox = () => {
       if (response.data.code === 200) {
         toast.success(response.data.message || "Đã xóa lịch sử!");
         setMessages([{ text: "Xin chào! Tôi có thể giúp gì cho bạn?", sender: "bot" }]);
-      } else if (response.data.code === 400 && response.data.message.includes("token")) {
+      } else if (response.data.code === 400 && response.data.message?.includes("token")) {
         toast.error("Vui lòng đăng nhập để xóa lịch sử!");
         navigate("/login");
       } else {

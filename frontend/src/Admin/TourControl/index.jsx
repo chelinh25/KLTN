@@ -16,6 +16,8 @@ import {
     Select,
     InputLabel,
     FormControl,
+    FormControlLabel,
+    Checkbox,
     Pagination,
     Avatar,
 } from "@mui/material";
@@ -73,7 +75,13 @@ const TourControl = () => {
         category_id: "",
         timeStarts: [{ timeDepart: "", stock: "" }],
         gathering: "",
+        location: {
+            latitude: "",
+            longitude: "",
+            address: ""
+        },
         status: "active",
+        featured: false,
         images: [],
         information: "",
         schedule: "",
@@ -604,7 +612,13 @@ const TourControl = () => {
             category_id: "",
             timeStarts: [{ timeDepart: "", stock: "" }],
             gathering: "",
+            location: {
+                latitude: "",
+                longitude: "",
+                address: ""
+            },
             status: "active",
+            featured: false,
             images: [],
             information: "",
             schedule: "",
@@ -638,7 +652,13 @@ const TourControl = () => {
                 stock: item.stock.toString(),
             })),
             gathering: tour.gathering || "",
+            location: {
+                latitude: tour.location?.latitude || "",
+                longitude: tour.location?.longitude || "",
+                address: tour.location?.address || ""
+            },
             status: tour.status || "active",
+            featured: tour.featured || false,
             images: tourImages,
             information: tour.information || "",
             schedule: tour.schedule || "",
@@ -787,8 +807,18 @@ const TourControl = () => {
             formData.append("stock", parseInt(newTour.stock) || 0);
             formData.append("category_id", newTour.category_id);
             formData.append("gathering", newTour.gathering);
+            if (newTour.location.latitude) {
+                formData.append("location[latitude]", newTour.location.latitude);
+            }
+            if (newTour.location.longitude) {
+                formData.append("location[longitude]", newTour.location.longitude);
+            }
+            if (newTour.location.address) {
+                formData.append("location[address]", newTour.location.address);
+            }
             const category = categories.find((cat) => cat._id === newTour.category_id);
             formData.append("status", category && category.status === "inactive" ? "inactive" : newTour.status);
+            formData.append("featured", newTour.featured);
             formData.append("information", newTour.information || "");
             formData.append("schedule", newTour.schedule);
 
@@ -864,8 +894,18 @@ const TourControl = () => {
             formData.append("stock", parseInt(newTour.stock) || 0);
             formData.append("category_id", newTour.category_id);
             formData.append("gathering", newTour.gathering);
+            if (newTour.location.latitude) {
+                formData.append("location[latitude]", newTour.location.latitude);
+            }
+            if (newTour.location.longitude) {
+                formData.append("location[longitude]", newTour.location.longitude);
+            }
+            if (newTour.location.address) {
+                formData.append("location[address]", newTour.location.address);
+            }
             const category = categories.find((cat) => cat._id === newTour.category_id);
             formData.append("status", category && category.status === "inactive" ? "inactive" : newTour.status);
+            formData.append("featured", newTour.featured);
             formData.append("information", newTour.information || "");
             formData.append("schedule", newTour.schedule);
             newTour.timeStarts.forEach((time, index) => {
@@ -1238,6 +1278,23 @@ const TourControl = () => {
             },
         },
         {
+            field: "featured",
+            headerName: "Nổi bật",
+            flex: 0.5,
+            renderCell: (params) => (
+                <Checkbox
+                    checked={params.value || false}
+                    disabled={true}
+                    sx={{
+                        color: colors.greenAccent[600],
+                        '&.Mui-checked': {
+                            color: colors.greenAccent[500],
+                        },
+                    }}
+                />
+            ),
+        },
+        {
             field: "actions",
             headerName: "Hành động",
             flex: 1.6,
@@ -1507,6 +1564,31 @@ const TourControl = () => {
                         onChange={(e) => setNewTour({ ...newTour, gathering: e.target.value })}
                         required
                     />
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Latitude (Ví dụ: 16.0544)"
+                        type="number"
+                        value={newTour.location.latitude}
+                        onChange={(e) => setNewTour({ ...newTour, location: { ...newTour.location, latitude: e.target.value } })}
+                        inputProps={{ step: "any" }}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Longitude (Ví dụ: 108.2022)"
+                        type="number"
+                        value={newTour.location.longitude}
+                        onChange={(e) => setNewTour({ ...newTour, location: { ...newTour.location, longitude: e.target.value } })}
+                        inputProps={{ step: "any" }}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Địa chỉ cụ thể"
+                        value={newTour.location.address}
+                        onChange={(e) => setNewTour({ ...newTour, location: { ...newTour.location, address: e.target.value } })}
+                    />
                     <FormControl fullWidth margin="normal">
                         <InputLabel>Danh mục</InputLabel>
                         <Select
@@ -1607,6 +1689,17 @@ const TourControl = () => {
                         value={newTour.schedule}
                         onChange={(e) => setNewTour({ ...newTour, schedule: e.target.value })}
                         required
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={newTour.featured}
+                                onChange={(e) => setNewTour({ ...newTour, featured: e.target.checked })}
+                                color="primary"
+                            />
+                        }
+                        label="Đặt làm tour nổi bật"
+                        sx={{ mt: 2 }}
                     />
                     <Box mt={2}>
                         <Typography variant="body1" mb={1}>
